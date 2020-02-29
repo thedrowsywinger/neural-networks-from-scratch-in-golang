@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type node struct {
 	value            float64
@@ -32,6 +35,62 @@ func (b *Feed) Append(newPost *node) {
 		b.end = newPost
 	}
 	b.length++
+}
+
+func transpose(x [][]float32) [][]float32 {
+	out := make([][]float32, len(x[0]))
+	for i := 0; i < len(x); i += 1 {
+		for j := 0; j < len(x[0]); j += 1 {
+			out[j] = append(out[j], x[i][j])
+		}
+	}
+	return out
+}
+
+func multiply(x, y [][]float32) ([][]float32, error) {
+	if len(x[0]) != len(y) {
+		return nil, errors.New("Can't do matrix multiplication.")
+	}
+
+	out := make([][]float32, len(x))
+	for i := 0; i < len(x); i++ {
+		out[i] = make([]float32, len(y[0]))
+		for j := 0; j < len(y[0]); j++ {
+			for k := 0; k < len(y); k++ {
+				fmt.Print("i: ", i)
+				fmt.Print(" j: ", j)
+				fmt.Print(" k: ", k)
+				fmt.Print(" Multiplying: ", x[i][k])
+				fmt.Print(" with ", y[k][j])
+				out[i][j] += x[i][k] * y[k][j]
+				fmt.Print(" Product: ", x[i][k]*y[k][j])
+				fmt.Println(" output: ", out[i][j])
+			}
+		}
+	}
+	return out, nil
+}
+
+func add(x, y [][]float32) ([][]float32, error) {
+
+	out := make([][]float32, len(x))
+	for i := 0; i < len(x); i++ {
+		out[i] = make([]float32, len(y[0]))
+		for k := 0; k < len(y[0]); k++ {
+
+			fmt.Print("i: ", i)
+			// fmt.Print(" j: ", j)
+			fmt.Print(" k: ", k)
+			fmt.Print(" Adding: ", x[i][k])
+			fmt.Print(" with ", y[i][k])
+			out[i][k] = x[i][k] + y[i][k]
+			// fmt.Print(" Product: ", x[i][k]*y[k][j])
+			fmt.Println(" output: ", out[i][k])
+		}
+
+	}
+
+	return out, nil
 }
 
 func add(a float64, b float64) float64 {
