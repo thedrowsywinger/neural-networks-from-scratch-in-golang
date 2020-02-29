@@ -47,7 +47,7 @@ func transpose(x [][]float32) [][]float32 {
 	return out
 }
 
-func multiply(x, y [][]float32) ([][]float32, error) {
+func multiply_for_matrices(x, y [][]float32) ([][]float32, error) {
 	if len(x[0]) != len(y) {
 		return nil, errors.New("Can't do matrix multiplication.")
 	}
@@ -71,7 +71,7 @@ func multiply(x, y [][]float32) ([][]float32, error) {
 	return out, nil
 }
 
-func add(x, y [][]float32) ([][]float32, error) {
+func add_for_matrices(x, y [][]float32) ([][]float32, error) {
 
 	out := make([][]float32, len(x))
 	for i := 0; i < len(x); i++ {
@@ -93,6 +93,29 @@ func add(x, y [][]float32) ([][]float32, error) {
 	return out, nil
 }
 
+func relu_for_matrices(x [][]float32) [][]float32 {
+
+	out := make([][]float32, len(x))
+	for i := 0; i < len(x); i++ {
+		out[i] = make([]float32, len(x[0]))
+		for k := 0; k < len(x[0]); k++ {
+
+			fmt.Print("i: ", i)
+			fmt.Print(" k: ", k)
+			fmt.Println(" Current Element: ", x[i][k])
+			if x[i][k] < 0 {
+				out[i][k] = 0
+			} else {
+				out[i][k] = x[i][k]
+			}
+
+		}
+
+	}
+
+	return out
+}
+
 func add(a float64, b float64) float64 {
 	return a + b
 }
@@ -107,6 +130,14 @@ func product(a float64, b float64) float64 {
 
 func square(a float64) float64 {
 	return a * a
+}
+
+func relu(a float64) float64 {
+	if a < 0 {
+		return 0
+	} else {
+		return a
+	}
 }
 
 func derivative_conditions(current_node *node) float64 {
