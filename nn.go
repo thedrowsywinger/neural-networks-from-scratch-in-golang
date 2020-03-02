@@ -95,9 +95,10 @@ func transpose(x [][]float64) [][]float64 {
 // }
 
 func multiply_for_matrices(x, y [][]float64) [][]float64 {
-	fmt.Println("len of x[0]: ", len(x[0]))
-	fmt.Println("len of y: ", len(y))
-	fmt.Println("and len of y[0]: ", len(y[0]))
+	// fmt.Println("len of x[0]: ", len(x[0]))
+	// fmt.Println("len of y: ", len(y))
+	// fmt.Println("and len of y[0]: ", len(y[0]))
+	fmt.Printf("Previous matrix being multiplied by a %v x %v matrix\n", len(y), len(y[0]))
 	if len(x[0]) != len(y) {
 		fmt.Println("Can't do matrix multiplication.")
 	}
@@ -172,9 +173,9 @@ func relu_for_matrices(x [][]float64) [][]float64 {
 		out[i] = make([]float64, len(x[0]))
 		for k := 0; k < len(x[0]); k++ {
 
-			fmt.Print("i: ", i)
-			fmt.Print(" k: ", k)
-			fmt.Println(" Current Element: ", x[i][k])
+			// fmt.Print("i: ", i)
+			// fmt.Print(" k: ", k)
+			// fmt.Println(" Current Element: ", x[i][k])
 			if x[i][k] < 0 {
 				out[i][k] = 0
 			} else {
@@ -228,6 +229,132 @@ func relu(a float64) float64 {
 	}
 }
 
+func returning_one(row int, column int) [][]float64 {
+	one_matrix := make([][]float64, row)
+	for i := 0; i < row; i++ {
+		one_matrix[i] = make([]float64, column)
+		for k := 0; k < column; k++ {
+
+			one_matrix[i][k] = 1.0
+
+		}
+
+	}
+
+	fmt.Printf("one matrix dimensions: %v x %v\n", len(one_matrix), len(one_matrix[0]))
+
+	return one_matrix
+}
+
+func derivative_of_relu(current_node *node) [][]float64 {
+
+	a := current_node.value
+
+	relu_derivative := make([][]float64, len(a))
+	for i := 0; i < len(a); i++ {
+		relu_derivative[i] = make([]float64, len(a[0]))
+		for k := 0; k < len(a[0]); k++ {
+
+			if a[i][k] < 0 {
+				relu_derivative[i][k] = 0.0
+			} else {
+				relu_derivative[i][k] = 1.0
+			}
+
+		}
+
+	}
+
+	fmt.Printf("relu matrix dimensions: %v x %v\n", len(relu_derivative), len(relu_derivative[0]))
+
+	return relu_derivative
+}
+
+func addition_derivative(y [][]float64) [][]float64 {
+
+	out := make([][]float64, len(y))
+	for i := 0; i < len(y); i++ {
+		out[i] = make([]float64, len(y[0]))
+		for k := 0; k < len(y[0]); k++ {
+
+			out[i][k] = 1.0
+
+		}
+
+	}
+
+	return out
+}
+
+func subtraction_derivative(y [][]float64) [][]float64 {
+
+	out := make([][]float64, len(y))
+	for i := 0; i < len(y); i++ {
+		out[i] = make([]float64, len(y[0]))
+		for k := 0; k < len(y[0]); k++ {
+
+			out[i][k] = -1
+
+		}
+
+	}
+
+	return out
+}
+
+func derivative_of_subtraction(current_node *node) [][]float64 {
+
+	a := current_node.value
+
+	subtraction_der := subtraction_derivative(a)
+
+	fmt.Printf("subtraction matrix dimensions: %v x %v\n", len(subtraction_der), len(subtraction_der[0]))
+
+	return subtraction_der
+}
+
+func derivative_of_addition(current_node *node) [][]float64 {
+
+	a := current_node.value
+
+	addition_der := addition_derivative(a)
+
+	fmt.Printf("subtraction matrix dimensions: %v x %v\n", len(addition_der), len(addition_der[0]))
+
+	return addition_der
+}
+
+func derivative_conditions(current_node *node) [][]float64 {
+	// fmt.Printf("i7 %v\n", current_node.prev.operation)
+
+	if current_node.operation == "product" {
+
+		current_node.i_derivation = returning_one(len(current_node.value), len(current_node.value[0]))
+
+	} else if current_node.operation == "relu" {
+		current_node.i_derivation = derivative_of_relu(current_node)
+	} else if current_node.operation == "subtract" {
+		current_node.i_derivation = derivative_of_subtraction(current_node)
+	} else if current_node.sep == "last" {
+
+		current_node.i_derivation = returning_one(len(current_node.value), len(current_node.value[0]))
+
+	}
+	// else if current_node.operation == "add" {
+	// 	current_node.i_derivation = 1.0
+
+	// } else if current_node.operation == "product" {
+	// 	current_node.i_derivation = current_node.source_value
+
+	// } else if current_node.operation == "subtract" {
+	// 	current_node.i_derivation = -1.0
+
+	// }
+
+	return current_node.prev.i_derivation
+
+}
+
 // func derivative_conditions(current_node *node) float64 {
 // 	// fmt.Printf("i7 %v\n", current_node.prev.operation)
 
@@ -261,28 +388,43 @@ func main() {
 	f := &Feed{}
 
 	x := [][]float64{
-		[]float64{1.0, 2.0, 3.0},
-		[]float64{4.0, 5.0, 6.0},
+		[]float64{1.0, -2.0, 3.0},
 	}
 
 	a := [][]float64{
-		[]float64{0.2, 0.2, 0.2},
-		[]float64{0.2, 0.2, 0.2},
+		[]float64{0.2, 0.2, 0.2, 0.2, 0.2},
+		[]float64{0.2, 0.2, 0.2, 0.2, 0.2},
+		[]float64{0.2, 0.2, 0.2, 0.2, 0.2},
 	}
 
-	b := [][]float64{
-		[]float64{0.5, 0.5, 0.5},
-		[]float64{0.5, 0.5, 0.5},
-	}
+	// m1 := [3][3]int{}
+	// for i := 0; i < 3; i++ {
+	// 	for j := 0; j < 3; j++ {
+	// 		m1[i][j] = rand.Intn(9)
+	// 	}
+	// }
+
+	// fmt.Println("a: ", m1)
+
+	// b := [][]float64{
+	// 	[]float64{0.5, 0.5, 0.5},
+	// 	[]float64{0.5, 0.5, 0.5},
+	// }
 
 	c := [][]float64{
+		[]float64{1.0, 1.0},
+		[]float64{1.0, 1.0},
+		[]float64{1.0, 1.0},
 		[]float64{1.0, 1.0},
 		[]float64{1.0, 1.0},
 	}
 
 	y := [][]float64{
 		[]float64{5.0, 5.0},
-		[]float64{5.0, 5.0},
+		// []float64{5.0, 5.0},
+		// []float64{5.0, 5.0},
+		// []float64{5.0, 5.0},
+		// []float64{5.0, 5.0},
 	}
 
 	temp := [][]float64{
@@ -308,88 +450,142 @@ func main() {
 
 	current_node := f.start
 
+	// fmt.Print("Current output dimensions: ", len(i1.value))
+	// fmt.Println(" x", len(i1.value[0]))
+
+	// i2 := node{
+	// 	value:            relu_for_matrices(i1.value),
+	// 	operation:        "relu",
+	// 	parameter_exists: "no",
+	// 	sep:              "no",
+	// }
+	// f.Append(&i2)
+
+	// current_node = current_node.next
+
+	// The row of the first trainable parameter/ weight must match the the column of the value that
+	// comes out of the previous node
+
 	i2 := node{
-		value:            square_for_matrices(i1.value),
-		operation:        "square",
-		parameter_exists: "no",
-		sep:              "no",
-	}
-	f.Append(&i2)
-
-	current_node = current_node.next
-
-	i3_0 := node{
-		value:            multiply_for_matrices(i2.value, transpose(a)),
+		value:            multiply_for_matrices(i1.value, a),
 		operation:        "product",
 		parameter_exists: "yes",
 		parameter_label:  "a",
 		sep:              "no",
-		source_value:     i2.value,
-	}
-	f.Append(&i3_0)
-
-	current_node = current_node.next
-	// derivative_conditions(current_node)
-
-	i3_1 := node{
-		value:            multiply_for_matrices(i1.value, transpose(b)),
-		operation:        "product",
-		parameter_exists: "yes",
-		parameter_label:  "b",
-		sep:              "yes",
 		source_value:     i1.value,
 	}
-	f.Append(&i3_1)
+	f.Append(&i2)
 
 	current_node = current_node.next
-	// derivative_conditions(current_node)
+	derivative_conditions(current_node)
 
-	i4 := node{
-		value:            add_for_matrices(i3_0.value, i3_1.value),
-		operation:        "add",
+	i3 := node{
+		value:            relu_for_matrices(i2.value),
+		operation:        "relu",
 		parameter_exists: "no",
 		sep:              "no",
+	}
+	f.Append(&i3)
+
+	current_node = current_node.next
+
+	derivative_conditions(current_node)
+
+	i4 := node{
+		value:            multiply_for_matrices(i3.value, c),
+		operation:        "product",
+		parameter_exists: "yes",
+		parameter_label:  "c",
+		sep:              "no",
+		source_value:     i3.value,
 	}
 	f.Append(&i4)
 
 	current_node = current_node.next
-	// derivative_conditions(current_node)
+	derivative_conditions(current_node)
 
 	i5 := node{
-		value:            add_for_matrices(i4.value, c),
-		operation:        "add",
-		parameter_exists: "yes",
-		parameter_label:  "c",
-		sep:              "no",
-		source_value:     i4.value,
-	}
-	f.Append(&i5)
-
-	current_node = current_node.next
-	// derivative_conditions(current_node)
-
-	i6 := node{
-		value:            subtract_for_matrices(y, i5.value),
+		value:            subtract_for_matrices(y, i4.value),
 		operation:        "subtract",
 		parameter_exists: "no",
 		sep:              "no",
 	}
-	f.Append(&i6)
+	f.Append(&i5)
 
 	current_node = current_node.next
-	// derivative_conditions(current_node)
+	derivative_conditions(current_node)
 
-	// // this is the linked list node that accepts the float64 value
-
-	i7 := node{
-		value:            square_for_matrices(i6.value),
+	i6 := node{
+		value:            square_for_matrices(i5.value),
 		operation:        "square",
 		parameter_exists: "no",
 		sep:              "last",
 	}
-	f.Append(&i7)
+	f.Append(&i6)
 
 	current_node = current_node.next
+
+	derivative_conditions(current_node)
+
+	// i3_1 := node{
+	// 	value:            multiply_for_matrices(i1.value, transpose(b)),
+	// 	operation:        "product",
+	// 	parameter_exists: "yes",
+	// 	parameter_label:  "b",
+	// 	sep:              "yes",
+	// 	source_value:     i1.value,
+	// }
+	// f.Append(&i3_1)
+
+	// current_node = current_node.next
+	// derivative_conditions(current_node)
+
+	// i4 := node{
+	// 	value:            add_for_matrices(i3_0.value, i3_1.value),
+	// 	operation:        "add",
+	// 	parameter_exists: "no",
+	// 	sep:              "no",
+	// }
+	// f.Append(&i4)
+
+	// current_node = current_node.next
+	// derivative_conditions(current_node)
+
+	// i5 := node{
+	// 	value:            add_for_matrices(i4.value, c),
+	// 	operation:        "add",
+	// 	parameter_exists: "yes",
+	// 	parameter_label:  "c",
+	// 	sep:              "no",
+	// 	source_value:     i4.value,
+	// }
+	// f.Append(&i5)
+
+	// current_node = current_node.next
+	// derivative_conditions(current_node)
+
+	// i6 := node{
+	// 	value:            subtract_for_matrices(y, i5.value),
+	// 	operation:        "subtract",
+	// 	parameter_exists: "no",
+	// 	sep:              "no",
+	// }
+	// f.Append(&i6)
+
+	// current_node = current_node.next
+	// derivative_conditions(current_node)
+
+	// // this is the linked list node that accepts the float64 value
+
+	// i7 := node{
+	// 	value:            square_for_matrices(i6.value),
+	// 	operation:        "square",
+	// 	parameter_exists: "no",
+	// 	sep:              "last",
+	// }
+	// f.Append(&i7)
+
+	// current_node = current_node.next
 
 	// derivative_conditions(current_node)
 
@@ -415,11 +611,13 @@ func main() {
 	// }
 
 	fmt.Printf("i1: %v\n", f.start.value)
+	fmt.Printf("Current output dimensions: %v x %v \n", len(f.start.value), len(f.start.value[0]))
 
 	for i := 0; i < f.length-1; i++ {
 
 		f.start = f.start.next
 		fmt.Printf("i%v: %v\n", i+2, f.start.value)
+		fmt.Printf("Current output dimensions: %v x %v \n", len(f.start.value), len(f.start.value[0]))
 		fmt.Printf("i%v operation: %v\n", i+2, f.start.operation)
 		fmt.Printf("i%v current derived %v \n", i+2, f.start.i_derivation)
 
