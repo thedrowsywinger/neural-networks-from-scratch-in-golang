@@ -6,16 +6,18 @@ import (
 
 type node struct {
 	// value            float64
-	value            [][]float64
-	next             *node // link to the next Post
-	prev             *node
-	operation        string
-	parameter_exists string
-	i_derivation     [][]float64
-	parameter_value  [][]float64
-	sep              string
-	parameter_label  string
-	source_value     [][]float64
+	value                [][]float64
+	next                 *node // link to the next Post
+	prev                 *node
+	operation            string
+	parameter_exists     string
+	i_derivation         [][]float64
+	incoming_parameter   [][]float64
+	parameter_derivation [][]float64
+	sep                  string
+	parameter_label      string
+	source_value         [][]float64
+	loss                 float64
 	// source_value    float64
 	// i_derivation     float64
 	// parameter_value  float64
@@ -98,7 +100,7 @@ func multiply_for_matrices(x, y [][]float64) [][]float64 {
 	// fmt.Println("len of x[0]: ", len(x[0]))
 	// fmt.Println("len of y: ", len(y))
 	// fmt.Println("and len of y[0]: ", len(y[0]))
-	fmt.Printf("Previous matrix being multiplied by a %v x %v matrix\n", len(y), len(y[0]))
+	// fmt.Printf("Previous matrix being multiplied by a %v x %v matrix\n", len(y), len(y[0]))
 	if len(x[0]) != len(y) {
 		fmt.Println("Can't do matrix multiplication.")
 	}
@@ -147,6 +149,7 @@ func add_for_matrices(x, y [][]float64) [][]float64 {
 func subtract_for_matrices(x, y [][]float64) [][]float64 {
 
 	out := make([][]float64, len(x))
+	// a := 0.0
 	for i := 0; i < len(x); i++ {
 		out[i] = make([]float64, len(y[0]))
 		for k := 0; k < len(y[0]); k++ {
@@ -157,6 +160,7 @@ func subtract_for_matrices(x, y [][]float64) [][]float64 {
 			// fmt.Print(" Adding: ", x[i][k])
 			// fmt.Print(" with ", y[i][k])
 			out[i][k] = x[i][k] - y[i][k]
+			// a += x[i][k] - y[i][k]
 			// fmt.Print(" Product: ", x[i][k]*y[k][j])
 			// fmt.Println(" output: ", out[i][k])
 		}
@@ -205,6 +209,32 @@ func square_for_matrices(y [][]float64) [][]float64 {
 	return out
 }
 
+func loss_calculator(x, y [][]float64) float64 {
+
+	// out := make([][]float64, len(x))
+	a := 0.0
+	for i := 0; i < len(x); i++ {
+		// out[i] = make([]float64, len(y[0]))
+		for k := 0; k < len(y[0]); k++ {
+
+			// fmt.Print("i: ", i)
+			// // fmt.Print(" j: ", j)
+			// fmt.Print(" k: ", k)
+			// fmt.Print(" Adding: ", x[i][k])
+			// fmt.Print(" with ", y[i][k])
+			// out[i][k] = x[i][k] - y[i][k]
+			a += (x[i][k] - y[i][k]) * (x[i][k] - y[i][k])
+			// fmt.Print(" Product: ", x[i][k]*y[k][j])
+			// fmt.Println(" output: ", out[i][k])
+		}
+
+	}
+
+	// a = a * a
+
+	return a
+}
+
 func add(a float64, b float64) float64 {
 	return a + b
 }
@@ -241,7 +271,7 @@ func returning_one(row int, column int) [][]float64 {
 
 	}
 
-	fmt.Printf("one matrix dimensions: %v x %v\n", len(one_matrix), len(one_matrix[0]))
+	// fmt.Printf("one matrix dimensions: %v x %v\n", len(one_matrix), len(one_matrix[0]))
 
 	return one_matrix
 }
@@ -265,7 +295,7 @@ func derivative_of_relu(current_node *node) [][]float64 {
 
 	}
 
-	fmt.Printf("relu matrix dimensions: %v x %v\n", len(relu_derivative), len(relu_derivative[0]))
+	// fmt.Printf("relu matrix dimensions: %v x %v\n", len(relu_derivative), len(relu_derivative[0]))
 
 	return relu_derivative
 }
@@ -308,7 +338,7 @@ func derivative_of_subtraction(current_node *node) [][]float64 {
 
 	subtraction_der := subtraction_derivative(a)
 
-	fmt.Printf("subtraction matrix dimensions: %v x %v\n", len(subtraction_der), len(subtraction_der[0]))
+	// fmt.Printf("subtraction matrix dimensions: %v x %v\n", len(subtraction_der), len(subtraction_der[0]))
 
 	return subtraction_der
 }
@@ -319,9 +349,26 @@ func derivative_of_addition(current_node *node) [][]float64 {
 
 	addition_der := addition_derivative(a)
 
-	fmt.Printf("subtraction matrix dimensions: %v x %v\n", len(addition_der), len(addition_der[0]))
+	// fmt.Printf("subtraction matrix dimensions: %v x %v\n", len(addition_der), len(addition_der[0]))
 
 	return addition_der
+}
+
+func loss_derivative_calculator(current_node *node) [][]float64 {
+
+	y := current_node.value
+
+	out := make([][]float64, len(y))
+	// a := 0.0
+	for i := 0; i < len(y); i++ {
+		out[i] = make([]float64, len(y[0]))
+		for k := 0; k < len(y[0]); k++ {
+			out[i][k] = 2.0 * y[i][k]
+		}
+
+	}
+
+	return out
 }
 
 func derivative_conditions(current_node *node) [][]float64 {
@@ -336,9 +383,10 @@ func derivative_conditions(current_node *node) [][]float64 {
 	} else if current_node.operation == "subtract" {
 		current_node.i_derivation = derivative_of_subtraction(current_node)
 	} else if current_node.sep == "last" {
+		current_node.i_derivation = loss_derivative_calculator(current_node)
 
+	} else if current_node.operation == "add" {
 		current_node.i_derivation = returning_one(len(current_node.value), len(current_node.value[0]))
-
 	}
 	// else if current_node.operation == "add" {
 	// 	current_node.i_derivation = 1.0
@@ -376,6 +424,17 @@ func derivative_conditions(current_node *node) [][]float64 {
 
 // }
 
+func calculate_parameter(current_node *node) {
+	if current_node.operation == "add" {
+
+		current_node.parameter_derivation = returning_one(len(current_node.incoming_parameter), len(current_node.incoming_parameter[0]))
+
+	} else if current_node.operation == "product" {
+
+		current_node.parameter_derivation = current_node.source_value
+	}
+}
+
 // func calculate_parameter(current_node *node) {
 // 	if current_node.operation == "add" {
 // 		current_node.parameter_value = 1.0 * current_node.next.i_derivation
@@ -406,18 +465,21 @@ func main() {
 
 	// fmt.Println("a: ", m1)
 
-	// b := [][]float64{
-	// 	[]float64{0.5, 0.5, 0.5},
-	// 	[]float64{0.5, 0.5, 0.5},
-	// }
-
-	c := [][]float64{
-		[]float64{1.0, 1.0},
-		[]float64{1.0, 1.0},
-		[]float64{1.0, 1.0},
-		[]float64{1.0, 1.0},
-		[]float64{1.0, 1.0},
+	b := [][]float64{
+		[]float64{0.5},
+		[]float64{0.5},
+		[]float64{0.5},
+		[]float64{0.5},
+		[]float64{0.5},
 	}
+
+	// c := [][]float64{
+	// 	[]float64{1.0, 1.0},
+	// 	[]float64{1.0, 1.0},
+	// 	[]float64{1.0, 1.0},
+	// 	[]float64{1.0, 1.0},
+	// 	[]float64{1.0, 1.0},
+	// }
 
 	y := [][]float64{
 		[]float64{5.0, 5.0},
@@ -427,10 +489,10 @@ func main() {
 		// []float64{5.0, 5.0},
 	}
 
-	temp := [][]float64{
-		[]float64{0.0, 0.0, 0.0},
-		[]float64{0.0, 0.0, 0.0},
-	}
+	// temp := [][]float64{
+	// 	[]float64{0.0, 0.0, 0.0},
+	// 	[]float64{0.0, 0.0, 0.0},
+	// }
 
 	// x := 2.0
 	// a := 0.2
@@ -442,8 +504,6 @@ func main() {
 		value:            x,
 		operation:        "init",
 		parameter_exists: "no",
-		i_derivation:     temp,
-		parameter_value:  temp,
 		sep:              "no",
 	}
 	f.Append(&i1)
@@ -467,12 +527,13 @@ func main() {
 	// comes out of the previous node
 
 	i2 := node{
-		value:            multiply_for_matrices(i1.value, a),
-		operation:        "product",
-		parameter_exists: "yes",
-		parameter_label:  "a",
-		sep:              "no",
-		source_value:     i1.value,
+		value:              multiply_for_matrices(i1.value, a),
+		operation:          "product",
+		parameter_exists:   "yes",
+		parameter_label:    "a",
+		sep:                "no",
+		source_value:       i1.value,
+		incoming_parameter: a,
 	}
 	f.Append(&i2)
 
@@ -492,12 +553,13 @@ func main() {
 	derivative_conditions(current_node)
 
 	i4 := node{
-		value:            multiply_for_matrices(i3.value, c),
-		operation:        "product",
-		parameter_exists: "yes",
-		parameter_label:  "c",
-		sep:              "no",
-		source_value:     i3.value,
+		value:              add_for_matrices(i3.value, b),
+		operation:          "add",
+		parameter_exists:   "yes",
+		parameter_label:    "b",
+		sep:                "no",
+		source_value:       i3.value,
+		incoming_parameter: b,
 	}
 	f.Append(&i4)
 
@@ -505,27 +567,33 @@ func main() {
 	derivative_conditions(current_node)
 
 	i5 := node{
-		value:            subtract_for_matrices(y, i4.value),
-		operation:        "subtract",
+		value:            i4.value,
 		parameter_exists: "no",
-		sep:              "no",
+		sep:              "last",
 	}
 	f.Append(&i5)
 
 	current_node = current_node.next
-	derivative_conditions(current_node)
 
-	i6 := node{
-		value:            square_for_matrices(i5.value),
-		operation:        "square",
-		parameter_exists: "no",
-		sep:              "last",
-	}
-	f.Append(&i6)
+	loss_value := loss_calculator(y, current_node.value)
 
-	current_node = current_node.next
+	current_node.loss = loss_value
+
+	fmt.Println("Loss: ", current_node.loss)
 
 	derivative_conditions(current_node)
+
+	// i6 := node{
+	// 	value:            square_for_matrices(i5.value),
+	// 	operation:        "square",
+	// 	parameter_exists: "no",
+	// 	sep:              "last",
+	// }
+	// f.Append(&i6)
+
+	// current_node = current_node.next
+
+	// derivative_conditions(current_node)
 
 	// i3_1 := node{
 	// 	value:            multiply_for_matrices(i1.value, transpose(b)),
@@ -589,26 +657,56 @@ func main() {
 
 	// derivative_conditions(current_node)
 
-	// node_for_back := f.end
+	node_for_back := f.end
 
-	// for i := 0; i < f.length-1; i++ {
-	// 	if node_for_back.sep == "no" {
-	// 		node_for_back.i_derivation = node_for_back.i_derivation * node_for_back.next.i_derivation
-	// 	} else if node_for_back.sep == "yes" {
+	for i := 0; i < f.length-1; i++ {
+		if node_for_back.sep == "no" {
 
-	// 		node_for_back.i_derivation = node_for_back.i_derivation * node_for_back.next.i_derivation
-	// 	}
-	// 	node_for_back = node_for_back.prev
-	// }
+			column_of_current_derivation := len(node_for_back.i_derivation[0])
+			row_of_current_derivation := len(node_for_back.i_derivation)
+			column_of_next_derivation := len(node_for_back.next.i_derivation[0])
+			row_of_next_derivation := len(node_for_back.next.i_derivation)
+			if column_of_current_derivation == row_of_next_derivation {
+				fmt.Println("THIS COULD WORK")
+				fmt.Printf("Current dimensions: %v x %v\n", row_of_current_derivation, column_of_current_derivation)
+				fmt.Printf("Next dimensions: %v x %v\n", row_of_next_derivation, column_of_next_derivation)
+				node_for_back.i_derivation = multiply_for_matrices(node_for_back.i_derivation, node_for_back.next.i_derivation)
+			} else if row_of_current_derivation == row_of_next_derivation {
+				fmt.Println("THIS COULD WORK")
+				transpose_of_current_derivation := transpose(node_for_back.i_derivation)
+				node_for_back.i_derivation = multiply_for_matrices(transpose_of_current_derivation, node_for_back.next.i_derivation)
 
-	// tracker_for_parameter_update := f.end
-	// for i := 0; i < f.length-1; i++ {
-	// 	if tracker_for_parameter_update.parameter_exists == "yes" {
-	// 		calculate_parameter(tracker_for_parameter_update)
-	// 		fmt.Printf("Intermediate derivate for %v parameter: %v\n", tracker_for_parameter_update.parameter_label, tracker_for_parameter_update.parameter_value)
-	// 	}
-	// 	tracker_for_parameter_update = tracker_for_parameter_update.prev
-	// }
+			} else if column_of_current_derivation == column_of_next_derivation {
+				fmt.Println("THIS COULD WORK")
+				transpose_of_next_derivation := transpose(node_for_back.next.i_derivation)
+				node_for_back.i_derivation = multiply_for_matrices(node_for_back.i_derivation, transpose_of_next_derivation)
+
+			} else if row_of_current_derivation == column_of_next_derivation {
+				fmt.Println("THIS COULD WORK")
+				transpose_of_current_derivation := transpose(node_for_back.i_derivation)
+				node_for_back.i_derivation = multiply_for_matrices(transpose_of_current_derivation, node_for_back.next.i_derivation)
+
+			} else {
+				fmt.Println("THIS WON'T HAPPEN")
+				fmt.Printf("Current dimensions: %v x %v\n", row_of_current_derivation, column_of_current_derivation)
+				fmt.Printf("Next dimensions: %v x %v\n", row_of_next_derivation, column_of_next_derivation)
+			}
+			// node_for_back.i_derivation = (node_for_back.i_derivation) * (node_for_back.next.i_derivation)
+		} else if node_for_back.sep == "yes" {
+
+			// node_for_back.i_derivation = node_for_back.i_derivation * node_for_back.next.i_derivation
+		}
+		node_for_back = node_for_back.prev
+	}
+
+	tracker_for_parameter_update := f.end
+	for i := 0; i < f.length-1; i++ {
+		if tracker_for_parameter_update.parameter_exists == "yes" {
+			calculate_parameter(tracker_for_parameter_update)
+			fmt.Printf("Intermediate derivate for %v parameter: %v\n", tracker_for_parameter_update.parameter_label, tracker_for_parameter_update.parameter_derivation)
+		}
+		tracker_for_parameter_update = tracker_for_parameter_update.prev
+	}
 
 	fmt.Printf("i1: %v\n", f.start.value)
 	fmt.Printf("Current output dimensions: %v x %v \n", len(f.start.value), len(f.start.value[0]))
@@ -620,7 +718,10 @@ func main() {
 		fmt.Printf("Current output dimensions: %v x %v \n", len(f.start.value), len(f.start.value[0]))
 		fmt.Printf("i%v operation: %v\n", i+2, f.start.operation)
 		fmt.Printf("i%v current derived %v \n", i+2, f.start.i_derivation)
+		fmt.Printf("i%v current parameter derivation %v \n", i+2, f.start.parameter_derivation)
 
 	}
+
+	fmt.Printf("B %v \n", a)
 
 }
