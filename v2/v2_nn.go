@@ -7,7 +7,7 @@ import (
 type node struct {
 	value                [][]float64
 	next                 *node
-	prev                 *node       // i don't believe i'm using this
+	prev                 *node
 	operation            string      // what operation is going to happen in this node, it'll just be a string , so we can use this to determine what sort of derivative operation we'll need
 	parameter_exists     string      // if this is yes, meaning there exists a new trainable parameter in this step, then the code will know to come upto this node for the backpropagation
 	i_derivation         [][]float64 // this calculates the i derivative for the current operation, required for the chain rule used for back propagation
@@ -151,15 +151,16 @@ func square_for_matrices(y [][]float64) [][]float64 {
 	return out
 }
 
-func loss_calculator(x, y [][]float64) float64 {
+func loss_calculator(x [][]float64) float64 {
 
 	// out := make([][]float64, len(x))
 	a := 0.0
 	for i := 0; i < len(x); i++ {
 		// out[i] = make([]float64, len(y[0]))
-		for k := 0; k < len(y[0]); k++ {
+		for k := 0; k < len(x[0]); k++ {
 
-			a += (x[i][k] - y[i][k]) * (x[i][k] - y[i][k])
+			// a += (x[i][k] - y[i][k]) * (x[i][k] - y[i][k])
+			a += (x[i][k]) * (x[i][k])
 
 		}
 
@@ -339,7 +340,7 @@ func derivative_conditions(current_node *node) [][]float64 {
 	} else if current_node.operation == "relu" {
 		current_node.i_derivation = derivative_of_relu(current_node)
 	} else if current_node.operation == "subtract" {
-		current_node.i_derivation = derivative_of_subtraction(current_node)
+		current_node.i_derivation = returning_one(len(current_node.value), len(current_node.value[0]))
 	} else if current_node.sep == "last" {
 		current_node.i_derivation = loss_derivative_calculator(current_node)
 
@@ -352,66 +353,108 @@ func derivative_conditions(current_node *node) [][]float64 {
 }
 
 func calculate_parameter(current_node *node) {
+	parameter_derivative := returning_one(len(current_node.incoming_parameter), len(current_node.incoming_parameter[0]))
+	// parameter_derivative := current_node.source_value
+	fmt.Printf("This node is: %v\n", current_node.parameter_label)
+	column_of_parameter_derivation := len(parameter_derivative[0])
+	row_of_parameter_derivation := len(parameter_derivative)
+	column_of_next_derivation := len(current_node.next.i_derivation[0])
+	row_of_next_derivation := len(current_node.next.i_derivation)
 	if current_node.operation == "add" {
 
-		parameter_derivative := returning_one(len(current_node.incoming_parameter), len(current_node.incoming_parameter[0]))
-		current_node.parameter_derivation = multiply_for_matrices(parameter_derivative, current_node.next.i_derivation)
-
-	} else if current_node.operation == "product" {
-
-		column_of_current_derivation := len(current_node.source_value[0])
-		row_of_current_derivation := len(current_node.source_value)
-		column_of_next_derivation := len(current_node.next.i_derivation[0])
-		row_of_next_derivation := len(current_node.next.i_derivation)
-
-		if column_of_current_derivation == row_of_next_derivation {
-
-			fmt.Printf("Current dimensions: %v x %v\n", row_of_current_derivation, column_of_current_derivation)
-			fmt.Printf("Next dimensions: %v x %v\n", row_of_next_derivation, column_of_next_derivation)
-			current_node.parameter_derivation = multiply_for_matrices(current_node.i_derivation, current_node.next.i_derivation)
-		} else if row_of_current_derivation == row_of_next_derivation {
-
-			transpose_of_current_derivation := transpose(current_node.i_derivation)
-			current_node.parameter_derivation = multiply_for_matrices(transpose_of_current_derivation, current_node.next.i_derivation)
-
-		} else if column_of_current_derivation == column_of_next_derivation {
-
-			transpose_of_next_derivation := transpose(current_node.next.i_derivation)
-			current_node.parameter_derivation = multiply_for_matrices(current_node.source_value, transpose_of_next_derivation)
-
-		} else if row_of_current_derivation == column_of_next_derivation {
-
-			transpose_of_current_derivation := transpose(current_node.next.i_derivation)
-			current_node.parameter_derivation = multiply_for_matrices(transpose_of_current_derivation, current_node.next.i_derivation)
+		if row_of_parameter_derivation == row_of_next_derivation && column_of_parameter_derivation == column_of_next_derivation {
+			// fmt.Printf("Dimensions matched\n")
+			current_node.parameter_derivation = element_wise_multiplication(parameter_derivative, current_node.next.i_derivation)
 
 		} else {
-			fmt.Println("THIS WON'T HAPPEN")
-			fmt.Printf("Current dimensions: %v x %v\n", row_of_current_derivation, column_of_current_derivation)
-			fmt.Printf("Next dimensions: %v x %v\n", row_of_next_derivation, column_of_next_derivation)
+			fmt.Printf("gotta fix dimensions")
+		}
+
+	} else if current_node.operation == "product" {
+		if row_of_parameter_derivation == row_of_next_derivation && column_of_parameter_derivation == column_of_next_derivation {
+			// fmt.Printf("Dimensions matched\n")
+			current_node.parameter_derivation = element_wise_multiplication(parameter_derivative, current_node.next.i_derivation)
+
+		} else {
+			fmt.Printf("gotta fix dimensions\n")
+			fmt.Printf("Parameter derivative: %v\n", parameter_derivative)
+			fmt.Printf("Parameter derivative dimensions: %v x %v\n", len(parameter_derivative), len(parameter_derivative[0]))
+			fmt.Printf("Previous i_derivative dimensions: %v x %v\n", len(current_node.next.i_derivation), len(current_node.next.i_derivation[0]))
+			broadcasting_matrix := returning_one(len(current_node.next.i_derivation[0]), len(parameter_derivative[0]))
+			fmt.Printf("Broadcasting matrix dimensions: %v x %v\n", len(broadcasting_matrix), len(broadcasting_matrix[0]))
+			broadcasted_output := multiply_for_matrices(current_node.next.i_derivation, broadcasting_matrix)
+			current_node.parameter_derivation = element_wise_multiplication(parameter_derivative, broadcasted_output)
+
+		}
+	}
+
+	// 	column_of_current_derivation := len(current_node.source_value[0])
+	// 	row_of_current_derivation := len(current_node.source_value)
+	// 	column_of_next_derivation := len(current_node.next.i_derivation[0])
+	// 	row_of_next_derivation := len(current_node.next.i_derivation)
+
+	// 	if column_of_current_derivation == row_of_next_derivation {
+
+	// 		fmt.Printf("Current dimensions: %v x %v\n", row_of_current_derivation, column_of_current_derivation)
+	// 		fmt.Printf("Next dimensions: %v x %v\n", row_of_next_derivation, column_of_next_derivation)
+	// 		current_node.parameter_derivation = multiply_for_matrices(current_node.i_derivation, current_node.next.i_derivation)
+	// 	} else if row_of_current_derivation == row_of_next_derivation {
+
+	// 		transpose_of_current_derivation := transpose(current_node.i_derivation)
+	// 		current_node.parameter_derivation = multiply_for_matrices(transpose_of_current_derivation, current_node.next.i_derivation)
+
+	// 	} else if column_of_current_derivation == column_of_next_derivation {
+
+	// 		transpose_of_next_derivation := transpose(current_node.next.i_derivation)
+	// 		current_node.parameter_derivation = multiply_for_matrices(current_node.source_value, transpose_of_next_derivation)
+
+	// 	} else if row_of_current_derivation == column_of_next_derivation {
+
+	// 		transpose_of_current_derivation := transpose(current_node.next.i_derivation)
+	// 		current_node.parameter_derivation = multiply_for_matrices(transpose_of_current_derivation, current_node.next.i_derivation)
+
+	// 	} else {
+	// 		fmt.Println("THIS WON'T HAPPEN")
+	// 		fmt.Printf("Current dimensions: %v x %v\n", row_of_current_derivation, column_of_current_derivation)
+	// 		fmt.Printf("Next dimensions: %v x %v\n", row_of_next_derivation, column_of_next_derivation)
+	// 	}
+
+	// }
+}
+
+func element_wise_multiplication(x, y [][]float64) [][]float64 {
+
+	out := make([][]float64, len(x))
+	for i := 0; i < len(x); i++ {
+		out[i] = make([]float64, len(y[0]))
+		for k := 0; k < len(y[0]); k++ {
+
+			out[i][k] = x[i][k] * y[i][k]
+
 		}
 
 	}
+
+	return out
 }
 
 func main() {
 	f := &Feed{}
 
 	x := [][]float64{
-		[]float64{1.0, -2.0, 3.0},
+		[]float64{1.0},
+		[]float64{2.0},
+		[]float64{3.0},
 	}
 
 	a := [][]float64{
-		[]float64{0.2, 0.2, 0.2, 0.2, 0.2},
-		[]float64{0.2, 0.2, 0.2, 0.2, 0.2},
-		[]float64{0.2, 0.2, 0.2, 0.2, 0.2},
+		[]float64{1.0, 2.0, 1.0},
+		[]float64{3.0, 1.0, 2.0},
 	}
 
 	b := [][]float64{
-		[]float64{0.5},
-		[]float64{0.5},
-		[]float64{0.5},
-		[]float64{0.5},
-		[]float64{0.5},
+		[]float64{1.0},
+		[]float64{2.0},
 	}
 
 	// c := [][]float64{
@@ -423,12 +466,17 @@ func main() {
 	// }
 
 	y := [][]float64{
-		[]float64{5.0, 5.0},
-		// []float64{5.0, 5.0},
-		// []float64{5.0, 5.0},
-		// []float64{5.0, 5.0},
-		// []float64{5.0, 5.0},
+		[]float64{10.0},
+		[]float64{15.0},
 	}
+
+	// y := [][]float64{
+	// 	[]float64{5.0, 5.0},
+	// 	// []float64{5.0, 5.0},
+	// 	// []float64{5.0, 5.0},
+	// 	// []float64{5.0, 5.0},
+	// 	// []float64{5.0, 5.0},
+	// }
 
 	// temp := [][]float64{
 	// 	[]float64{0.0, 0.0, 0.0},
@@ -455,7 +503,7 @@ func main() {
 	// comes out of the previous node
 
 	i2 := node{
-		value:              multiply_for_matrices(i1.value, a),
+		value:              multiply_for_matrices(a, i1.value),
 		operation:          "product",
 		parameter_exists:   "yes",
 		parameter_label:    "a",
@@ -477,7 +525,6 @@ func main() {
 	f.Append(&i3)
 
 	current_node = current_node.next
-
 	derivative_conditions(current_node)
 
 	i4 := node{
@@ -494,16 +541,27 @@ func main() {
 	current_node = current_node.next
 	derivative_conditions(current_node)
 
-	i5 := node{
-		value:            i4.value,
+	// i5 := node{
+	// 	value:            subtract_for_matrices(y, i4.value),
+	// 	operation:        "subtract",
+	// 	parameter_exists: "no",
+	// 	sep:              "no",
+	// }
+	// f.Append(&i5)
+
+	// current_node = current_node.next
+	// derivative_conditions(current_node)
+
+	i6 := node{
+		value:            subtract_for_matrices(y, i4.value),
 		parameter_exists: "no",
 		sep:              "last",
 	}
-	f.Append(&i5)
+	f.Append(&i6)
 
 	current_node = current_node.next
 
-	loss_value := loss_calculator(y, current_node.value)
+	loss_value := loss_calculator(current_node.value)
 
 	current_node.loss = loss_value
 
@@ -514,52 +572,71 @@ func main() {
 	node_for_back := f.end
 
 	for i := 0; i < f.length-1; i++ {
+
+		// 	fmt.Printf("current seperator: %v\n", node_for_back.sep)
 		if node_for_back.sep == "no" {
+			// fmt.Printf("Where am I\n: %v \n", node_for_back.i_derivation)
+			fmt.Printf("Current dimensions: %v x %v\n", len(node_for_back.i_derivation), len(node_for_back.i_derivation[0]))
+			fmt.Printf("Next dimensions: %v x %v\n", len(node_for_back.next.i_derivation), len(node_for_back.next.i_derivation[0]))
 
 			column_of_current_derivation := len(node_for_back.i_derivation[0])
 			row_of_current_derivation := len(node_for_back.i_derivation)
 			column_of_next_derivation := len(node_for_back.next.i_derivation[0])
 			row_of_next_derivation := len(node_for_back.next.i_derivation)
-			if column_of_current_derivation == row_of_next_derivation {
 
-				// fmt.Printf("Current dimensions: %v x %v\n", row_of_current_derivation, column_of_current_derivation)
-				// fmt.Printf("Next dimensions: %v x %v\n", row_of_next_derivation, column_of_next_derivation)
-				node_for_back.i_derivation = multiply_for_matrices(node_for_back.i_derivation, node_for_back.next.i_derivation)
-
-			} else if row_of_current_derivation == row_of_next_derivation {
-
-				transpose_of_current_derivation := transpose(node_for_back.i_derivation)
-				node_for_back.i_derivation = multiply_for_matrices(transpose_of_current_derivation, node_for_back.next.i_derivation)
-
-			} else if column_of_current_derivation == column_of_next_derivation {
-
-				transpose_of_next_derivation := transpose(node_for_back.next.i_derivation)
-				node_for_back.i_derivation = multiply_for_matrices(node_for_back.i_derivation, transpose_of_next_derivation)
-
-			} else if row_of_current_derivation == column_of_next_derivation {
-
-				transpose_of_current_derivation := transpose(node_for_back.i_derivation)
-				node_for_back.i_derivation = multiply_for_matrices(transpose_of_current_derivation, node_for_back.next.i_derivation)
-
+			if row_of_current_derivation == row_of_next_derivation && column_of_current_derivation == column_of_next_derivation {
+				fmt.Printf("Dimensions matched\n")
+				node_for_back.i_derivation = element_wise_multiplication(node_for_back.i_derivation, node_for_back.next.i_derivation)
 			} else {
-				fmt.Println("THIS WON'T HAPPEN")
-				fmt.Printf("Current dimensions: %v x %v\n", row_of_current_derivation, column_of_current_derivation)
-				fmt.Printf("Next dimensions: %v x %v\n", row_of_next_derivation, column_of_next_derivation)
+
+				broadcasting_matrix := returning_one(row_of_next_derivation, column_of_current_derivation)
+				fmt.Printf("Broadcasting matrix dimensions: %v x %v\n", len(broadcasting_matrix), len(broadcasting_matrix[0]))
+
 			}
 
-		} else if node_for_back.sep == "yes" {
+			// 		if column_of_current_derivation == row_of_next_derivation {
+
+			// 			fmt.Printf("Current dimensions: %v x %v\n", len(node_for_back.i_derivation), len(node_for_back.i_derivation[0]))
+			// 			fmt.Printf("Next dimensions: %v x %v\n", len(node_for_back.next.i_derivation), len(node_for_back.next.i_derivation[0]))
+			// 			node_for_back.i_derivation = multiply_for_matrices(node_for_back.i_derivation, node_for_back.next.i_derivation)
+
+			// 		} else if row_of_current_derivation == row_of_next_derivation {
+
+			// 			transpose_of_current_derivation := transpose(node_for_back.i_derivation)
+			// 			node_for_back.i_derivation = multiply_for_matrices(transpose_of_current_derivation, node_for_back.next.i_derivation)
+
+			// 		} else if column_of_current_derivation == column_of_next_derivation {
+
+			// 			transpose_of_next_derivation := transpose(node_for_back.next.i_derivation)
+			// 			node_for_back.i_derivation = multiply_for_matrices(node_for_back.i_derivation, transpose_of_next_derivation)
+
+			// 		} else if row_of_current_derivation == column_of_next_derivation {
+
+			// 			transpose_of_current_derivation := transpose(node_for_back.i_derivation)
+			// 			node_for_back.i_derivation = multiply_for_matrices(transpose_of_current_derivation, node_for_back.next.i_derivation)
+
+			// 		} else {
+			// 			fmt.Println("THIS WON'T HAPPEN")
+			// 			fmt.Printf("Current dimensions: %v x %v\n", row_of_current_derivation, column_of_current_derivation)
+			// 			fmt.Printf("Next dimensions: %v x %v\n", row_of_next_derivation, column_of_next_derivation)
+			// 		}
+
+			// 	} else if node_for_back.sep == "yes" {
 
 		}
 		node_for_back = node_for_back.prev
 	}
 
 	tracker_for_parameter_update := f.end
+
 	for i := 0; i < f.length-1; i++ {
+
 		if tracker_for_parameter_update.parameter_exists == "yes" {
 			calculate_parameter(tracker_for_parameter_update)
 			fmt.Printf("Intermediate derivate for %v parameter: %v\n", tracker_for_parameter_update.parameter_label, tracker_for_parameter_update.parameter_derivation)
-			fmt.Printf("Dimensions of %v: %v x %v\n", tracker_for_parameter_update.parameter_label, len(tracker_for_parameter_update.parameter_derivation), len(tracker_for_parameter_update.parameter_derivation[0]))
+			// fmt.Printf("Dimensions of %v: %v x %v\n", tracker_for_parameter_update.parameter_label, len(tracker_for_parameter_update.parameter_derivation), len(tracker_for_parameter_update.parameter_derivation[0]))
 		}
+
 		tracker_for_parameter_update = tracker_for_parameter_update.prev
 	}
 
@@ -570,7 +647,7 @@ func main() {
 
 		f.start = f.start.next
 		fmt.Printf("i%v: %v\n", i+2, f.start.value)
-		fmt.Printf("Current output dimensions: %v x %v \n", len(f.start.value), len(f.start.value[0]))
+		// fmt.Printf("Current output dimensions: %v x %v \n", len(f.start.value), len(f.start.value[0]))
 		fmt.Printf("i%v operation: %v\n", i+2, f.start.operation)
 		fmt.Printf("i%v current derived %v \n", i+2, f.start.i_derivation)
 		fmt.Printf("i%v current parameter derivation %v \n", i+2, f.start.parameter_derivation)
@@ -578,7 +655,7 @@ func main() {
 	}
 
 	// fmt.Printf("A %v \n", a)
-	fmt.Printf("Dimensions of a: %v x %v\n", len(a), len(a[0]))
+	fmt.Printf("a: %v \n", a)
 
 	// For Parameter Update
 
