@@ -353,14 +353,17 @@ func derivative_conditions(current_node *node) [][]float64 {
 }
 
 func calculate_parameter(current_node *node) {
-	parameter_derivative := returning_one(len(current_node.incoming_parameter), len(current_node.incoming_parameter[0]))
-	// parameter_derivative := current_node.source_value
-	fmt.Printf("This node is: %v\n", current_node.parameter_label)
-	column_of_parameter_derivation := len(parameter_derivative[0])
-	row_of_parameter_derivation := len(parameter_derivative)
-	column_of_next_derivation := len(current_node.next.i_derivation[0])
-	row_of_next_derivation := len(current_node.next.i_derivation)
 	if current_node.operation == "add" {
+
+		parameter_derivative := returning_one(len(current_node.incoming_parameter), len(current_node.incoming_parameter[0]))
+		// fmt.Printf("The incoming parameter: %v \n", current_node.incoming_parameter)
+		// fmt.Printf("The source value: %v\n", current_node.source_value)
+		// parameter_derivative := multiply_for_matrices(current_node.source_value, returned_one)
+		// fmt.Printf("This node is: %v\n", current_node.parameter_label)
+		column_of_parameter_derivation := len(parameter_derivative[0])
+		row_of_parameter_derivation := len(parameter_derivative)
+		column_of_next_derivation := len(current_node.next.i_derivation[0])
+		row_of_next_derivation := len(current_node.next.i_derivation)
 
 		if row_of_parameter_derivation == row_of_next_derivation && column_of_parameter_derivation == column_of_next_derivation {
 			// fmt.Printf("Dimensions matched\n")
@@ -371,18 +374,30 @@ func calculate_parameter(current_node *node) {
 		}
 
 	} else if current_node.operation == "product" {
+		// fmt.Printf("We're entering product\n")
+		parameter_derivative := returning_one(len(current_node.incoming_parameter), len(current_node.incoming_parameter[0]))
+		// fmt.Printf("The returned one matrix: %v \n", parameter_derivative)
+		// fmt.Printf("The source value: %v\n", current_node.source_value)
+		// fmt.Printf("This node is: %v\n", current_node.parameter_label)
+		column_of_parameter_derivation := len(parameter_derivative[0])
+		row_of_parameter_derivation := len(parameter_derivative)
+		column_of_next_derivation := len(current_node.next.i_derivation[0])
+		row_of_next_derivation := len(current_node.next.i_derivation)
+		// fmt.Printf("The incoming parameter dimensions: %v x %v \n", row_of_parameter_derivation, column_of_parameter_derivation)
+		// fmt.Printf("Source dimensions: %v x %v \n", len(current_node.source_value), len(current_node.source_value[0]))
 		if row_of_parameter_derivation == row_of_next_derivation && column_of_parameter_derivation == column_of_next_derivation {
 			// fmt.Printf("Dimensions matched\n")
 			current_node.parameter_derivation = element_wise_multiplication(parameter_derivative, current_node.next.i_derivation)
 
 		} else {
-			fmt.Printf("gotta fix dimensions\n")
-			fmt.Printf("Parameter derivative: %v\n", parameter_derivative)
-			fmt.Printf("Parameter derivative dimensions: %v x %v\n", len(parameter_derivative), len(parameter_derivative[0]))
-			fmt.Printf("Previous i_derivative dimensions: %v x %v\n", len(current_node.next.i_derivation), len(current_node.next.i_derivation[0]))
+			// fmt.Printf("gotta fix dimensions\n")
+			// fmt.Printf("Parameter derivative: %v\n", parameter_derivative)
+			// fmt.Printf("Parameter derivative dimensions: %v x %v\n", len(parameter_derivative), len(parameter_derivative[0]))
+			// fmt.Printf("Previous i_derivative dimensions: %v x %v\n", len(current_node.next.i_derivation), len(current_node.next.i_derivation[0]))
 			broadcasting_matrix := returning_one(len(current_node.next.i_derivation[0]), len(parameter_derivative[0]))
-			fmt.Printf("Broadcasting matrix dimensions: %v x %v\n", len(broadcasting_matrix), len(broadcasting_matrix[0]))
-			broadcasted_output := multiply_for_matrices(current_node.next.i_derivation, broadcasting_matrix)
+			parameter_derivative_after := broadcasting_two_matrices(current_node.source_value, broadcasting_matrix)
+			// fmt.Printf("Broadcasting matrix dimensions: %v x %v\n", len(broadcasting_matrix), len(broadcasting_matrix[0]))
+			broadcasted_output := multiply_for_matrices(current_node.next.i_derivation, parameter_derivative_after)
 			current_node.parameter_derivation = element_wise_multiplication(parameter_derivative, broadcasted_output)
 
 		}
@@ -436,6 +451,23 @@ func element_wise_multiplication(x, y [][]float64) [][]float64 {
 	}
 
 	return out
+}
+
+func broadcasting_two_matrices(x, y [][]float64) [][]float64 {
+
+	out := make([][]float64, len(y))
+	for i := 0; i < len(y); i++ {
+		out[i] = make([]float64, len(y[0]))
+		for j := 0; j < len(y[0]); j++ {
+			for k := 0; k < len(y); k++ {
+				// fmt.Printf("Index[%v][%v]\n", j, k)
+				out[i][j] += x[j][k] * y[k][j]
+
+			}
+		}
+	}
+	return out
+
 }
 
 func main() {
@@ -576,8 +608,8 @@ func main() {
 		// 	fmt.Printf("current seperator: %v\n", node_for_back.sep)
 		if node_for_back.sep == "no" {
 			// fmt.Printf("Where am I\n: %v \n", node_for_back.i_derivation)
-			fmt.Printf("Current dimensions: %v x %v\n", len(node_for_back.i_derivation), len(node_for_back.i_derivation[0]))
-			fmt.Printf("Next dimensions: %v x %v\n", len(node_for_back.next.i_derivation), len(node_for_back.next.i_derivation[0]))
+			// fmt.Printf("Current dimensions: %v x %v\n", len(node_for_back.i_derivation), len(node_for_back.i_derivation[0]))
+			// fmt.Printf("Next dimensions: %v x %v\n", len(node_for_back.next.i_derivation), len(node_for_back.next.i_derivation[0]))
 
 			column_of_current_derivation := len(node_for_back.i_derivation[0])
 			row_of_current_derivation := len(node_for_back.i_derivation)
@@ -585,7 +617,7 @@ func main() {
 			row_of_next_derivation := len(node_for_back.next.i_derivation)
 
 			if row_of_current_derivation == row_of_next_derivation && column_of_current_derivation == column_of_next_derivation {
-				fmt.Printf("Dimensions matched\n")
+				// fmt.Printf("Dimensions matched\n")
 				node_for_back.i_derivation = element_wise_multiplication(node_for_back.i_derivation, node_for_back.next.i_derivation)
 			} else {
 
