@@ -403,38 +403,6 @@ func calculate_parameter(current_node *node) {
 		}
 	}
 
-	// 	column_of_current_derivation := len(current_node.source_value[0])
-	// 	row_of_current_derivation := len(current_node.source_value)
-	// 	column_of_next_derivation := len(current_node.next.i_derivation[0])
-	// 	row_of_next_derivation := len(current_node.next.i_derivation)
-
-	// 	if column_of_current_derivation == row_of_next_derivation {
-
-	// 		fmt.Printf("Current dimensions: %v x %v\n", row_of_current_derivation, column_of_current_derivation)
-	// 		fmt.Printf("Next dimensions: %v x %v\n", row_of_next_derivation, column_of_next_derivation)
-	// 		current_node.parameter_derivation = multiply_for_matrices(current_node.i_derivation, current_node.next.i_derivation)
-	// 	} else if row_of_current_derivation == row_of_next_derivation {
-
-	// 		transpose_of_current_derivation := transpose(current_node.i_derivation)
-	// 		current_node.parameter_derivation = multiply_for_matrices(transpose_of_current_derivation, current_node.next.i_derivation)
-
-	// 	} else if column_of_current_derivation == column_of_next_derivation {
-
-	// 		transpose_of_next_derivation := transpose(current_node.next.i_derivation)
-	// 		current_node.parameter_derivation = multiply_for_matrices(current_node.source_value, transpose_of_next_derivation)
-
-	// 	} else if row_of_current_derivation == column_of_next_derivation {
-
-	// 		transpose_of_current_derivation := transpose(current_node.next.i_derivation)
-	// 		current_node.parameter_derivation = multiply_for_matrices(transpose_of_current_derivation, current_node.next.i_derivation)
-
-	// 	} else {
-	// 		fmt.Println("THIS WON'T HAPPEN")
-	// 		fmt.Printf("Current dimensions: %v x %v\n", row_of_current_derivation, column_of_current_derivation)
-	// 		fmt.Printf("Next dimensions: %v x %v\n", row_of_next_derivation, column_of_next_derivation)
-	// 	}
-
-	// }
 }
 
 func element_wise_multiplication(x, y [][]float64) [][]float64 {
@@ -468,6 +436,65 @@ func broadcasting_two_matrices(x, y [][]float64) [][]float64 {
 	}
 	return out
 
+}
+
+func cnn_filter(a, filter [][]float64) [][]float64 {
+
+	filter_size := len(filter[0])
+	fmt.Printf("filter size = %v \n", filter_size)
+	difference_of_rows := len(a) - len(filter)
+	fmt.Printf("%v: \n", difference_of_rows)
+	difference_of_columns := len(a[0]) - len(filter[0])
+	limit := difference_of_columns + difference_of_columns
+
+	row_for_the_output := len(a) - len(filter) + 1
+	column_for_the_output := len(a[0]) - len(filter[0]) + 1
+
+	sliced_thing := make([]float64, 0)
+	fmt.Printf("Declaring slice: %v\n", sliced_thing)
+	for l := 0; l < difference_of_columns; l++ {
+		fmt.Printf("What is L now: %v\n", l)
+		// l_counter := 0
+		for k := 0; k <= difference_of_rows; k++ {
+			// fmt.Printf("k value %v\n", k)
+			summed_value := 0.0
+			counter_for_rows := 0
+			for i := 0; i <= difference_of_rows; i++ {
+				counter_for_columns := 0
+				for j := k; j < filter_size; j++ {
+
+					m := i + l
+					summed_value += (a[m][j] * filter[counter_for_rows][counter_for_columns])
+					counter_for_columns += 1
+
+				}
+				counter_for_rows += 1
+			}
+
+			filter_size += 1
+			sliced_thing = append(sliced_thing, summed_value)
+
+		}
+
+		filter_size = len(filter[0])
+		difference_of_columns += 1
+		if difference_of_columns > limit {
+			break
+		}
+
+	}
+
+	out := make([][]float64, row_for_the_output)
+	counter_for_input := 0
+	for i := 0; i < row_for_the_output; i++ {
+		out[i] = make([]float64, column_for_the_output)
+		for j := 0; j < column_for_the_output; j++ {
+			out[i][j] = sliced_thing[counter_for_input]
+			counter_for_input += 1
+		}
+	}
+
+	return out
 }
 
 func main() {
